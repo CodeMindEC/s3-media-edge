@@ -87,11 +87,11 @@ services:
                 reservations:
                     memory: 256m
         healthcheck:
-            test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/"]
+            test: ["CMD-SHELL", "nc -z localhost 8000 || exit 1"]
             interval: 15s
             timeout: 3s
             retries: 5
-            start_period: 10s
+            start_period: 15s
             start_interval: 3s
 
     # ── CDN Nginx — Caching reverse proxy (PUBLIC) ──────────────
@@ -104,7 +104,7 @@ services:
             garage:
                 condition: service_healthy
             imagor:
-                condition: service_healthy
+                condition: service_started
         volumes:
             - cdn_cache:/var/cache/nginx/cdn
         tmpfs:
