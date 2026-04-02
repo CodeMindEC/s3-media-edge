@@ -18,7 +18,6 @@ services:
         volumes:
             - garage_data:/var/lib/garage/data
             - garage_meta:/var/lib/garage/meta
-            - ./garage.toml:/etc/garage.toml:ro
         environment:
             GARAGE_CONFIG_FILE: /etc/garage.toml
             GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
