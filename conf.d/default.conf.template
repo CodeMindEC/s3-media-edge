@@ -8,8 +8,9 @@ server {
     server_name ${CDN_DOMAIN} localhost;
 
     # ── Upstream variables (resolved at request time) ────────
-    set $imagor_upstream "http://${IMAGOR_UPSTREAM}";
-    set $s3_upstream     "http://${S3_UPSTREAM}";
+    set $imagor_upstream  "http://${IMAGOR_UPSTREAM}";
+    set $s3_upstream      "http://${S3_UPSTREAM}";
+    set $s3_web_upstream  "http://${S3_WEB_UPSTREAM}";
 
     # ── Hide S3 headers ──────────────────────────────────────
     proxy_hide_header X-Amz-Request-Id;
@@ -129,8 +130,9 @@ server {
         limit_req zone=raw burst=20 nodelay;
         slice 1m;
 
-        proxy_pass         $s3_upstream/${S3_BUCKET}/$file;
+        proxy_pass         $s3_web_upstream/$file;
         proxy_http_version 1.1;
+        proxy_set_header   Host ${S3_BUCKET};
         proxy_set_header   Connection "";
         proxy_set_header   Range $slice_range;
 
@@ -166,8 +168,9 @@ server {
 
         limit_req zone=docs burst=20 nodelay;
 
-        proxy_pass         $s3_upstream/${S3_BUCKET}/$file;
+        proxy_pass         $s3_web_upstream/$file;
         proxy_http_version 1.1;
+        proxy_set_header   Host ${S3_BUCKET};
         proxy_set_header   Connection "";
 
         proxy_cache           cdn_cache;

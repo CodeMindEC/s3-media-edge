@@ -32,6 +32,7 @@ services:
             S3_BUCKET: ${S3_BUCKET}
             GARAGE_CAPACITY: ${GARAGE_CAPACITY:-50GB}
             S3_KEY_NAME: ${S3_KEY_NAME:-default}
+            S3_PUBLIC_READ: ${S3_PUBLIC_READ:-false}
         security_opt:
             - no-new-privileges:true
         deploy:
@@ -106,6 +107,7 @@ services:
         environment:
             IMAGOR_UPSTREAM: imagor:8000
             S3_UPSTREAM: garage:3900
+            S3_WEB_UPSTREAM: garage:3902
             S3_BUCKET: ${S3_BUCKET}
             ALLOWED_ORIGINS_REGEX: ${ALLOWED_ORIGINS_REGEX:-localhost}
             CACHE_MAX_SIZE: ${CACHE_MAX_SIZE:-10g}

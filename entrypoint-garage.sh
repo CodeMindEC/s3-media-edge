@@ -79,5 +79,11 @@ else
     echo "[bootstrap] Already bootstrapped, skipping."
 fi
 
+# --- Public read via web endpoint (runs every start if enabled) ---
+if [ "${S3_PUBLIC_READ:-false}" = "true" ]; then
+    garage bucket website --allow "${S3_BUCKET}" 2>/dev/null || true
+    echo "[public-read] Website mode enabled for '${S3_BUCKET}' (port 3902 serves anonymously)."
+fi
+
 # Wait for Garage (tini handles signal forwarding)
 wait $GARAGE_PID
