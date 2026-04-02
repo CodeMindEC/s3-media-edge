@@ -25,7 +25,7 @@ services:
             GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
             GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN}
             GARAGE_ALLOW_WORLD_READABLE_SECRETS: "true"
-            RUST_LOG: ${RUST_LOG:-garage=info}
+            RUST_LOG: "garage=info"
         networks:
             - internal
         healthcheck:
@@ -41,7 +41,7 @@ services:
         environment:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-            AWS_REGION: ${AWS_REGION:-garage}
+            AWS_REGION: garage
             AWS_EC2_METADATA_DISABLED: "true"
             S3_ENDPOINT: http://garage:3900
             S3_FORCE_PATH_STYLE: "1"
@@ -97,7 +97,7 @@ services:
             API_BASE_URL: http://garage:3903
             API_ADMIN_KEY: ${GARAGE_ADMIN_TOKEN}
             S3_ENDPOINT_URL: http://garage:3900
-            S3_REGION: ${AWS_REGION:-garage}
+            S3_REGION: garage
             AUTH_USER_PASS: ${AUTH_USER_PASS:-}
         ports:
             - "${WEBUI_PORT:-3909}:3909"
