@@ -1,0 +1,5 @@
+* text=auto
+entrypoint*.sh text eol=lf
+Dockerfile* text eol=lf
+*.toml text eol=lf
+*.template text eol=lf
