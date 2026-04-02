@@ -30,8 +30,6 @@ services:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
             S3_BUCKET: ${S3_BUCKET}
-        networks:
-            - default
         security_opt:
             - no-new-privileges:true
         deploy:
@@ -76,8 +74,6 @@ services:
             IMAGOR_PROCESS_CONCURRENCY: ${IMAGOR_PROCESS_CONCURRENCY:-10}
             IMAGOR_PROCESS_QUEUE_SIZE: ${IMAGOR_PROCESS_QUEUE_SIZE:-100}
             IMAGOR_RESULT_STORAGE_EXPIRATION: ${IMAGOR_RESULT_STORAGE_EXPIRATION:-720h}
-        networks:
-            - default
         security_opt:
             - no-new-privileges:true
         deploy:
@@ -113,8 +109,6 @@ services:
             MAX_IMG_SIZE: ${MAX_IMG_SIZE:-5m}
         expose:
             - "80"
-        networks:
-            - default
         security_opt:
             - no-new-privileges:true
         deploy:
@@ -145,8 +139,6 @@ services:
             AUTH_USER_PASS: ${AUTH_USER_PASS:-}
         expose:
             - "3909"
-        networks:
-            - default
         security_opt:
             - no-new-privileges:true
         deploy:
