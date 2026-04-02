@@ -21,6 +21,9 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
+    # ── Security ─────────────────────────────────────────────
+    server_tokens off;
+
     # ── Logging with cache status ────────────────────────────
     log_format cdn '$remote_addr - [$time_local] "$request" '
                    '$status $body_bytes_sent '
@@ -35,6 +38,11 @@ http {
     tcp_nodelay     on;
     keepalive_timeout 65;
     types_hash_max_size 2048;
+
+    # ── Buffer overflow protection ───────────────────────────
+    client_body_buffer_size   16k;
+    client_header_buffer_size 1k;
+    large_client_header_buffers 4 8k;
 
     # ── Gzip ─────────────────────────────────────────────────
     gzip            on;

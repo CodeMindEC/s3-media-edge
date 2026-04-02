@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -eu
 
 # ─────────────────────────────────────────────────────────────
 # Garage auto-bootstrap entrypoint
@@ -7,52 +7,65 @@ set -e
 # ─────────────────────────────────────────────────────────────
 
 MARKER="/var/lib/garage/meta/.bootstrapped"
+MAX_WAIT=60
 
 # Start Garage in background
-/garage server &
+garage server &
 GARAGE_PID=$!
 
-# Wait for API to be ready
-echo "[bootstrap] Waiting for Garage API..."
+# Forward SIGTERM/SIGINT to Garage for graceful shutdown
+trap 'kill -TERM $GARAGE_PID 2>/dev/null; wait $GARAGE_PID; exit $?' TERM INT
+
+# Wait for API with timeout
+echo "[bootstrap] Waiting for Garage API (timeout ${MAX_WAIT}s)..."
+elapsed=0
 until curl -sf http://localhost:3900/health > /dev/null 2>&1; do
+    elapsed=$((elapsed + 1))
+    if [ "$elapsed" -ge "$MAX_WAIT" ]; then
+        echo "[bootstrap] ERROR: Garage API did not become ready in ${MAX_WAIT}s"
+        kill -TERM "$GARAGE_PID" 2>/dev/null
+        exit 1
+    fi
     sleep 1
 done
-echo "[bootstrap] Garage API is ready."
+echo "[bootstrap] Garage API is ready (${elapsed}s)."
 
 # Only bootstrap once
 if [ ! -f "$MARKER" ]; then
-    echo "[bootstrap] First boot detected — configuring cluster..."
+    echo "[bootstrap] First boot — configuring cluster..."
 
-    # Get own node ID
-    NODE_ID=$(/garage status 2>/dev/null | grep "NO ROLE" | awk '{print $1}')
+    # Get own node ID (look for nodes with no assigned role)
+    NODE_ID=$(garage status 2>/dev/null | grep "NO ROLE" | awk '{print $1}' | head -1)
     if [ -z "$NODE_ID" ]; then
-        NODE_ID=$(/garage status 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        NODE_ID=$(garage status 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
     fi
 
-    if [ -n "$NODE_ID" ]; then
-        echo "[bootstrap] Assigning layout to node ${NODE_ID}..."
-        /garage layout assign -z dc1 -c "${GARAGE_CAPACITY:-50GB}" "$NODE_ID"
-        /garage layout apply --version 1
+    if [ -z "$NODE_ID" ]; then
+        echo "[bootstrap] WARNING: Could not determine node ID. Manual setup required."
+    else
+        echo "[bootstrap] Node: ${NODE_ID}"
 
-        echo "[bootstrap] Creating bucket '${S3_BUCKET}'..."
-        /garage bucket create "${S3_BUCKET}"
+        garage layout assign -z dc1 -c "${GARAGE_CAPACITY:-50GB}" "$NODE_ID"
+        garage layout apply --version 1
+        echo "[bootstrap] Layout applied."
 
-        echo "[bootstrap] Importing API key..."
-        /garage key import -n "${S3_KEY_NAME:-default}" \
+        garage bucket create "${S3_BUCKET}"
+        echo "[bootstrap] Bucket '${S3_BUCKET}' created."
+
+        garage key import -n "${S3_KEY_NAME:-default}" \
             "${AWS_ACCESS_KEY_ID}" "${AWS_SECRET_ACCESS_KEY}"
+        echo "[bootstrap] API key imported."
 
-        echo "[bootstrap] Granting permissions..."
-        /garage bucket allow --read --write --owner \
+        garage bucket allow --read --write --owner \
             "${S3_BUCKET}" --key "${S3_KEY_NAME:-default}"
+        echo "[bootstrap] Permissions granted."
 
         touch "$MARKER"
-        echo "[bootstrap] Done! Cluster is ready."
-    else
-        echo "[bootstrap] WARNING: Could not determine node ID. Manual setup required."
+        echo "[bootstrap] Cluster is ready."
     fi
 else
-    echo "[bootstrap] Already bootstrapped, skipping setup."
+    echo "[bootstrap] Already bootstrapped, skipping."
 fi
 
-# Wait for Garage process
+# Wait for Garage (tini handles signal forwarding)
 wait $GARAGE_PID

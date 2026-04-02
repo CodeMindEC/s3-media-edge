@@ -32,6 +32,14 @@ services:
             S3_BUCKET: ${S3_BUCKET}
         networks:
             - internal
+        security_opt:
+            - no-new-privileges:true
+        deploy:
+            resources:
+                limits:
+                    memory: 1g
+                reservations:
+                    memory: 256m
         healthcheck:
             test: ["CMD", "curl", "-sf", "http://localhost:3900/health"]
             interval: 15s
@@ -67,6 +75,14 @@ services:
             IMAGOR_RESULT_STORAGE_EXPIRATION: ${IMAGOR_RESULT_STORAGE_EXPIRATION:-720h}
         networks:
             - internal
+        security_opt:
+            - no-new-privileges:true
+        deploy:
+            resources:
+                limits:
+                    memory: 2g
+                reservations:
+                    memory: 256m
         healthcheck:
             test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/"]
             interval: 15s
@@ -83,6 +99,9 @@ services:
         restart: unless-stopped
         volumes:
             - cdn_cache:/var/cache/nginx/cdn
+        tmpfs:
+            - /tmp:size=64m,noexec,nosuid
+            - /var/run:size=1m,noexec,nosuid
         environment:
             IMAGOR_UPSTREAM: imagor:8000
             S3_UPSTREAM: garage:3900
@@ -96,6 +115,14 @@ services:
             - "80"
         networks:
             - internal
+        security_opt:
+            - no-new-privileges:true
+        deploy:
+            resources:
+                limits:
+                    memory: 512m
+                reservations:
+                    memory: 64m
         healthcheck:
             test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
             interval: 15s
@@ -120,6 +147,14 @@ services:
             - "3909"
         networks:
             - internal
+        security_opt:
+            - no-new-privileges:true
+        deploy:
+            resources:
+                limits:
+                    memory: 128m
+                reservations:
+                    memory: 32m
 
 networks:
     internal:

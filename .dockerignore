@@ -1,0 +1,9 @@
+.git
+.gitignore
+.gitattributes
+.env
+.env.*
+!.env.example
+README.md
+LICENSE
+*.md
