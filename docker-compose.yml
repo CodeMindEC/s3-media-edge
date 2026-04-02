@@ -118,7 +118,7 @@ services:
                 reservations:
                     memory: 64m
         healthcheck:
-            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/health"]
+            test: ["CMD", "curl", "-sf", "http://localhost/health"]
             interval: 15s
             timeout: 3s
             retries: 5

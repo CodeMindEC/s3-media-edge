@@ -13,4 +13,5 @@ envsubst "$VARS" < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.
 
 nginx -t 2>&1
 
+echo "[cdn] Starting nginx..."
 exec "$@"

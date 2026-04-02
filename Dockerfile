@@ -27,7 +27,8 @@ LABEL org.opencontainers.image.source="https://github.com/CodeMindEC/s3-media-ed
 
 COPY --from=builder /tmp/nginx-src/objs/ngx_http_cache_purge_module.so /etc/nginx/modules/
 
-RUN rm -f /etc/nginx/conf.d/default.conf \
+RUN apk add --no-cache curl \
+    && rm -f /etc/nginx/conf.d/default.conf \
     && mkdir -p /var/cache/nginx/cdn \
     && chown -R nginx:nginx /var/cache/nginx/cdn /var/log/nginx \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
