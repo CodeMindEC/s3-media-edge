@@ -13,12 +13,13 @@
 services:
     # ── Garage S3 ───────────────────────────────────────────────
     garage:
-        image: dxflrs/garage:${GARAGE_VERSION:-v2.1.0}
+        build:
+            context: .
+            dockerfile: Dockerfile.garage
         restart: unless-stopped
         volumes:
             - garage_data:/var/lib/garage/data
             - garage_meta:/var/lib/garage/meta
-            - ./garage.toml:/etc/garage.toml:ro
         environment:
             GARAGE_CONFIG_FILE: /etc/garage.toml
             GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
