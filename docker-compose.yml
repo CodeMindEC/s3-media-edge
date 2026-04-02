@@ -45,7 +45,7 @@ services:
             interval: 15s
             timeout: 3s
             retries: 5
-            start_period: 30s
+            start_period: 90s
             start_interval: 5s
 
     # ── Imagor — Image processing (PRIVATE) ─────────────────────

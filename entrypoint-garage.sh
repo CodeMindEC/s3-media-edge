@@ -17,9 +17,9 @@ GARAGE_PID=$!
 trap 'kill -TERM $GARAGE_PID 2>/dev/null; wait $GARAGE_PID; exit $?' TERM INT
 
 # Wait for API with timeout
-echo "[bootstrap] Waiting for Garage API (timeout ${MAX_WAIT}s)..."
+echo "[bootstrap] Waiting for Garage admin API (timeout ${MAX_WAIT}s)..."
 elapsed=0
-until curl -sf http://localhost:3903/health > /dev/null 2>&1; do
+until curl -so /dev/null http://localhost:3903/health 2>/dev/null; do
     elapsed=$((elapsed + 1))
     if [ "$elapsed" -ge "$MAX_WAIT" ]; then
         echo "[bootstrap] ERROR: Garage API did not become ready in ${MAX_WAIT}s"
@@ -28,7 +28,7 @@ until curl -sf http://localhost:3903/health > /dev/null 2>&1; do
     fi
     sleep 1
 done
-echo "[bootstrap] Garage API is ready (${elapsed}s)."
+echo "[bootstrap] Garage admin API is responding (${elapsed}s)."
 
 # Only bootstrap once
 if [ ! -f "$MARKER" ]; then
