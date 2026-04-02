@@ -41,20 +41,37 @@ if [ ! -f "$MARKER" ]; then
         echo "[bootstrap] WARNING: Could not determine node ID. Manual setup required."
     else
         echo "[bootstrap] Node: ${NODE_ID}"
+        SHORT_ID=$(echo "$NODE_ID" | cut -c1-16)
 
-        garage layout assign -z dc1 -c "${GARAGE_CAPACITY:-50GB}" "$NODE_ID"
-        garage layout apply --version 1
-        echo "[bootstrap] Layout applied."
+        # --- Layout (skip if node already has a role) ---
+        if garage layout show 2>/dev/null | grep -q "$SHORT_ID"; then
+            echo "[bootstrap] Layout already has this node, skipping layout."
+        else
+            # Clear any stale staged changes from previous failed attempts
+            garage layout revert 2>/dev/null || true
+            garage layout assign -z dc1 -c "${GARAGE_CAPACITY:-50GB}" "$NODE_ID"
 
-        garage bucket create "${S3_BUCKET}"
-        echo "[bootstrap] Bucket '${S3_BUCKET}' created."
+            # Determine next layout version dynamically
+            CURRENT_VER=$(garage layout show 2>/dev/null \
+                | grep "Current cluster layout version" \
+                | awk '{print $NF}')
+            NEXT_VER=$(( ${CURRENT_VER:-0} + 1 ))
+            garage layout apply --version "$NEXT_VER"
+            echo "[bootstrap] Layout applied (version ${NEXT_VER})."
+        fi
 
+        # --- Bucket (idempotent) ---
+        garage bucket create "${S3_BUCKET}" 2>/dev/null || true
+        echo "[bootstrap] Bucket '${S3_BUCKET}' ensured."
+
+        # --- API key (idempotent) ---
         garage key import -n "${S3_KEY_NAME:-default}" \
-            "${AWS_ACCESS_KEY_ID}" "${AWS_SECRET_ACCESS_KEY}"
-        echo "[bootstrap] API key imported."
+            "${AWS_ACCESS_KEY_ID}" "${AWS_SECRET_ACCESS_KEY}" 2>/dev/null || true
+        echo "[bootstrap] API key ensured."
 
+        # --- Permissions (idempotent) ---
         garage bucket allow --read --write --owner \
-            "${S3_BUCKET}" --key "${S3_KEY_NAME:-default}"
+            "${S3_BUCKET}" --key "${S3_KEY_NAME:-default}" 2>/dev/null || true
         echo "[bootstrap] Permissions granted."
 
         touch "$MARKER"
