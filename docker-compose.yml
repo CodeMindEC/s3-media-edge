@@ -30,9 +30,11 @@ services:
             - internal
         healthcheck:
             test: ["CMD", "curl", "-sf", "http://localhost:3900/health"]
-            interval: 30s
-            timeout: 5s
-            retries: 3
+            interval: 15s
+            timeout: 3s
+            retries: 5
+            start_period: 30s
+            start_interval: 5s
 
     # ── Imagor — Image processing (PRIVATE) ─────────────────────
     imagor:
@@ -61,6 +63,13 @@ services:
             IMAGOR_RESULT_STORAGE_EXPIRATION: ${IMAGOR_RESULT_STORAGE_EXPIRATION:-720h}
         networks:
             - internal
+        healthcheck:
+            test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/"]
+            interval: 15s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+            start_interval: 3s
 
     # ── CDN Nginx — Caching reverse proxy (PUBLIC) ──────────────
     cdn:
@@ -82,10 +91,12 @@ services:
         networks:
             - internal
         healthcheck:
-            test: ["CMD", "wget", "-qO-", "http://localhost/health"]
-            interval: 30s
-            timeout: 5s
-            retries: 3
+            test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+            interval: 15s
+            timeout: 3s
+            retries: 5
+            start_period: 15s
+            start_interval: 3s
 
     # ── Garage WebUI — Admin panel (PUBLIC) ─────────────────────
     webui:
