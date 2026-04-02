@@ -17,13 +17,15 @@ server {
     listen 80;
     server_name ${CDN_DOMAIN} localhost;
 
-    # ── CORS preflight ───────────────────────────────────────
+    # ── CORS headers (server-level, inherited by the OPTIONS return) ──
+    add_header Access-Control-Allow-Origin $cors_origin always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept, Range" always;
+    add_header Access-Control-Max-Age 86400 always;
+    add_header Vary "Origin" always;
+
+    # ── CORS preflight (only return allowed in server-level if) ──
     if ($request_method = 'OPTIONS') {
-        add_header Access-Control-Allow-Origin $cors_origin always;
-        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
-        add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept, Range" always;
-        add_header Access-Control-Max-Age 86400 always;
-        add_header Content-Length 0 always;
         return 204;
     }
 
