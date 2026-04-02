@@ -1,6 +1,8 @@
 ARG GARAGE_VERSION=v2.1.0
-FROM dxflrs/garage:${GARAGE_VERSION}
+FROM dxflrs/garage:${GARAGE_VERSION} AS garage-bin
+FROM alpine:3.20
 RUN apk add --no-cache curl
+COPY --from=garage-bin /garage /garage
 COPY garage.toml /etc/garage.toml
 COPY entrypoint-garage.sh /entrypoint-garage.sh
 RUN chmod +x /entrypoint-garage.sh

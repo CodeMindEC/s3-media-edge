@@ -9,7 +9,7 @@ set -e
 MARKER="/var/lib/garage/meta/.bootstrapped"
 
 # Start Garage in background
-garage server &
+/garage server &
 GARAGE_PID=$!
 
 # Wait for API to be ready
@@ -24,25 +24,25 @@ if [ ! -f "$MARKER" ]; then
     echo "[bootstrap] First boot detected — configuring cluster..."
 
     # Get own node ID
-    NODE_ID=$(garage status 2>/dev/null | grep "NO ROLE" | awk '{print $1}')
+    NODE_ID=$(/garage status 2>/dev/null | grep "NO ROLE" | awk '{print $1}')
     if [ -z "$NODE_ID" ]; then
-        NODE_ID=$(garage status 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        NODE_ID=$(/garage status 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
     fi
 
     if [ -n "$NODE_ID" ]; then
         echo "[bootstrap] Assigning layout to node ${NODE_ID}..."
-        garage layout assign -z dc1 -c "${GARAGE_CAPACITY:-50GB}" "$NODE_ID"
-        garage layout apply --version 1
+        /garage layout assign -z dc1 -c "${GARAGE_CAPACITY:-50GB}" "$NODE_ID"
+        /garage layout apply --version 1
 
         echo "[bootstrap] Creating bucket '${S3_BUCKET}'..."
-        garage bucket create "${S3_BUCKET}"
+        /garage bucket create "${S3_BUCKET}"
 
         echo "[bootstrap] Importing API key..."
-        garage key import -n "${S3_KEY_NAME:-default}" \
+        /garage key import -n "${S3_KEY_NAME:-default}" \
             "${AWS_ACCESS_KEY_ID}" "${AWS_SECRET_ACCESS_KEY}"
 
         echo "[bootstrap] Granting permissions..."
-        garage bucket allow --read --write --owner \
+        /garage bucket allow --read --write --owner \
             "${S3_BUCKET}" --key "${S3_KEY_NAME:-default}"
 
         touch "$MARKER"
