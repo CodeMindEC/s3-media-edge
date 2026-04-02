@@ -7,34 +7,29 @@ server {
     listen 80;
     server_name ${CDN_DOMAIN} localhost;
 
-    # ── Upstream variables (resolved at request time via resolver) ─
+    # ── Upstream variables (resolved at request time) ────────
     set $imagor_upstream "http://${IMAGOR_UPSTREAM}";
     set $s3_upstream     "http://${S3_UPSTREAM}";
 
-    # ── Hide upstream headers ────────────────────────────────
+    # ── Hide S3 headers ──────────────────────────────────────
     proxy_hide_header X-Amz-Request-Id;
     proxy_hide_header X-Amz-Id-2;
     proxy_hide_header X-Amz-Bucket-Region;
     proxy_hide_header X-Amz-Meta-S3b-Last-Modified;
     proxy_hide_header Server;
 
-    # ── Security headers (server-level) ──────────────────────
-    # NOTE: These apply to responses without location-level add_header
-    # (OPTIONS, catch-all 404, health). Location blocks with add_header
-    # must repeat these — this is an nginx design constraint.
+    # ── Security headers (server-level for non-location responses) ─
     add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Access-Control-Allow-Origin $cors_origin always;
+    add_header X-Frame-Options        "DENY" always;
+    add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+    add_header Access-Control-Allow-Origin  $cors_origin always;
     add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
     add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept, Range" always;
-    add_header Access-Control-Max-Age 86400 always;
+    add_header Access-Control-Max-Age       86400 always;
     add_header Vary "Origin" always;
 
-    # ── CORS preflight (only return allowed in server-level if) ──
-    if ($request_method = 'OPTIONS') {
-        return 204;
-    }
+    # ── CORS preflight ───────────────────────────────────────
+    if ($request_method = 'OPTIONS') { return 204; }
 
     # ── Catch-all ────────────────────────────────────────────
     location / {
@@ -42,23 +37,17 @@ server {
         return 404 '{"error":"not found"}';
     }
 
-    # ── Health check ─────────────────────────────────────────
+    # ── Health ───────────────────────────────────────────────
     location = /health {
         access_log off;
         default_type text/plain;
         return 200 'ok';
     }
 
-    # ─────────────────────────────────────────────────────────
-    # IMAGES — Dynamic resize via Imagor
-    # Pattern: /img/{width}/{file}
-    # Example: /img/800/photo.webp
-    #   → Imagor: /unsafe/fit-in/800x800/photo.webp
-    # ─────────────────────────────────────────────────────────
+    # ── Images — resize via Imagor (/img/{w}/{file}) ─────────
     location ~ ^/img/(\d+)/(.+)$ {
         set $width $1;
         set $file  $2;
-
         if ($file !~* \.(jpe?g|png|webp|avif|svg|gif)$) {
             return 404 '{"error":"extension not allowed"}';
         }
@@ -66,42 +55,36 @@ server {
         limit_req zone=images burst=60 nodelay;
         client_max_body_size ${MAX_IMG_SIZE};
 
-        proxy_pass $imagor_upstream/unsafe/fit-in/${width}x${width}/$file;
+        proxy_pass         $imagor_upstream/unsafe/fit-in/${width}x${width}/$file;
         proxy_http_version 1.1;
-        proxy_set_header Connection "";
+        proxy_set_header   Connection "";
 
-        proxy_cache cdn_cache;
-        proxy_cache_key "$uri";
-        proxy_cache_valid 200 30d;
-        proxy_cache_valid 404 1m;
-        proxy_cache_valid 500 502 503 504 10s;
-        proxy_cache_lock on;
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri";
+        proxy_cache_valid     200 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_valid     500 502 503 504 10s;
+        proxy_cache_lock      on;
         proxy_cache_lock_timeout 10s;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
 
-        add_header Cache-Control "public, max-age=2592000, immutable" always;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+        proxy_send_timeout    30s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
         add_header X-Content-Type-Options "nosniff" always;
-        add_header X-Frame-Options "DENY" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header X-Cache-Status $upstream_cache_status always;
-        add_header Access-Control-Allow-Origin $cors_origin always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
         add_header Vary "Origin" always;
-
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 30s;
-        proxy_send_timeout 30s;
     }
 
-    # ─────────────────────────────────────────────────────────
-    # IMAGES — Original (no resize)
-    # Pattern: /img/original/{file}
-    # Example: /img/original/logo.svg
-    #   → Imagor: /unsafe/logo.svg
-    # ─────────────────────────────────────────────────────────
+    # ── Images — original (/img/original/{file}) ─────────────
     location ~ ^/img/original/(.+)$ {
         set $file $1;
-
         if ($file !~* \.(jpe?g|png|webp|avif|svg|gif)$) {
             return 404 '{"error":"extension not allowed"}';
         }
@@ -109,140 +92,114 @@ server {
         limit_req zone=images burst=60 nodelay;
         client_max_body_size ${MAX_IMG_SIZE};
 
-        proxy_pass $imagor_upstream/unsafe/$file;
+        proxy_pass         $imagor_upstream/unsafe/$file;
         proxy_http_version 1.1;
-        proxy_set_header Connection "";
+        proxy_set_header   Connection "";
 
-        proxy_cache cdn_cache;
-        proxy_cache_key "$uri";
-        proxy_cache_valid 200 30d;
-        proxy_cache_valid 404 1m;
-        proxy_cache_valid 500 502 503 504 10s;
-        proxy_cache_lock on;
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri";
+        proxy_cache_valid     200 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_valid     500 502 503 504 10s;
+        proxy_cache_lock      on;
         proxy_cache_lock_timeout 10s;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
 
-        add_header Cache-Control "public, max-age=2592000, immutable" always;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+        proxy_send_timeout    30s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
         add_header X-Content-Type-Options "nosniff" always;
-        add_header X-Frame-Options "DENY" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header X-Cache-Status $upstream_cache_status always;
-        add_header Access-Control-Allow-Origin $cors_origin always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
         add_header Vary "Origin" always;
-
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 30s;
-        proxy_send_timeout 30s;
     }
 
-    # ─────────────────────────────────────────────────────────
-    # VIDEO — Streaming from S3 with slice caching
-    # Pattern: /raw/{file}
-    # Example: /raw/promo.mp4
-    #   → S3: /{bucket}/promo.mp4
-    #
-    # Uses the slice module to cache in 1MB segments.
-    # Seeking mid-video only downloads from that point.
-    # ─────────────────────────────────────────────────────────
+    # ── Video — streamed from S3 with 1 MB slice cache ───────
     location ~ ^/raw/(.+)$ {
         set $file $1;
-
         if ($file !~* \.(mp4|webm)$) {
             return 404 '{"error":"extension not allowed"}';
         }
 
         limit_req zone=raw burst=20 nodelay;
-
         slice 1m;
 
-        proxy_pass $s3_upstream/${S3_BUCKET}/$file;
+        proxy_pass         $s3_upstream/${S3_BUCKET}/$file;
         proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Range $slice_range;
+        proxy_set_header   Connection "";
+        proxy_set_header   Range $slice_range;
 
-        proxy_cache cdn_cache;
-        proxy_cache_key "$uri$slice_range";
-        proxy_cache_valid 200 206 30d;
-        proxy_cache_valid 404 1m;
-        proxy_cache_lock on;
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri$slice_range";
+        proxy_cache_valid     200 206 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_lock      on;
         proxy_cache_lock_timeout 30s;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
 
-        add_header Cache-Control "public, max-age=2592000, immutable" always;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    60s;
+        proxy_send_timeout    60s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
         add_header X-Content-Type-Options "nosniff" always;
-        add_header X-Frame-Options "DENY" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header X-Cache-Status $upstream_cache_status always;
-        add_header Access-Control-Allow-Origin $cors_origin always;
-        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin   $cors_origin always;
+        add_header Access-Control-Allow-Methods  "GET, OPTIONS" always;
         add_header Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges" always;
         add_header Vary "Origin" always;
-
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 60s;
-        proxy_send_timeout 60s;
     }
 
-    # ─────────────────────────────────────────────────────────
-    # DOCUMENTS — PDF, DOCX, etc. from S3
-    # Pattern: /doc/{file}
-    # Example: /doc/catalog.pdf
-    #   → S3: /{bucket}/catalog.pdf
-    # ─────────────────────────────────────────────────────────
+    # ── Documents — PDF, DOCX, etc. from S3 ─────────────────
     location ~ ^/doc/(.+)$ {
         set $file $1;
-
         if ($file !~* \.(pdf|docx?|xlsx?|csv|pptx?|odt|ods|txt)$) {
             return 404 '{"error":"extension not allowed"}';
         }
 
         limit_req zone=docs burst=20 nodelay;
 
-        proxy_pass $s3_upstream/${S3_BUCKET}/$file;
+        proxy_pass         $s3_upstream/${S3_BUCKET}/$file;
         proxy_http_version 1.1;
-        proxy_set_header Connection "";
+        proxy_set_header   Connection "";
 
-        proxy_cache cdn_cache;
-        proxy_cache_key "$uri";
-        proxy_cache_valid 200 30d;
-        proxy_cache_valid 404 1m;
-        proxy_cache_lock on;
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri";
+        proxy_cache_valid     200 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_lock      on;
         proxy_cache_lock_timeout 10s;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
 
-        add_header Cache-Control "public, max-age=2592000, immutable" always;
-        add_header Content-Disposition "inline" always;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+        proxy_send_timeout    30s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
+        add_header Content-Disposition    "inline" always;
         add_header X-Content-Type-Options "nosniff" always;
-        add_header X-Frame-Options "DENY" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header X-Cache-Status $upstream_cache_status always;
-        add_header Access-Control-Allow-Origin $cors_origin always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
         add_header Vary "Origin" always;
-
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 30s;
-        proxy_send_timeout 30s;
     }
 
-    # ─────────────────────────────────────────────────────────
-    # CACHE PURGE — Internal access only (Docker network)
-    #
-    # Usage from apps:
-    #   curl http://cdn/purge/img/800/photo.webp
-    #   curl http://cdn/purge/img/original/logo.svg
-    #   curl http://cdn/purge/doc/catalog.pdf
-    #
-    # For videos (slice cache), append * :
-    #   curl http://cdn/purge/raw/promo.mp4*
-    # ─────────────────────────────────────────────────────────
+    # ── Cache purge — internal only ──────────────────────────
     location ~ ^/purge(/.*) {
         allow 127.0.0.1;
         allow 10.0.0.0/8;
         allow 172.16.0.0/12;
         allow 192.168.0.0/16;
-        deny all;
+        deny  all;
 
         proxy_cache_purge cdn_cache "$1";
         cache_purge_response_type json;

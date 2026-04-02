@@ -1,10 +1,8 @@
 #!/bin/sh
 set -eu
 
-# ─────────────────────────────────────────────────────────────
 # Garage auto-bootstrap entrypoint
-# Starts Garage, then on first boot configures layout, bucket & key
-# ─────────────────────────────────────────────────────────────
+# Starts Garage, then on first boot configures layout, bucket & key.
 
 MARKER="/var/lib/garage/meta/.bootstrapped"
 MAX_WAIT=60

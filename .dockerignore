@@ -4,6 +4,8 @@
 .env
 .env.*
 !.env.example
-README.md
-LICENSE
 *.md
+LICENSE
+.qodo
+.vscode
+.idea

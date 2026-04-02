@@ -40,39 +40,21 @@ git clone https://github.com/CodeMindEC/s3-media-edge.git
 cd s3-media-edge
 
 cp .env.example .env
-# Edit .env with your secrets
-
-cp garage.toml.example garage.toml
-# Edit garage.toml with your RPC secret
+# Edit .env — fill in secrets and bucket name (see below)
 
 docker compose up -d
 ```
 
-Then configure your Garage cluster:
+On first boot, Garage **automatically**:
+1. Waits for the admin API to become healthy
+2. Assigns node storage capacity and applies the layout
+3. Creates the bucket defined by `S3_BUCKET`
+4. Imports the API key from `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
+5. Grants read/write/owner permissions
 
-```bash
-# Get the node ID
-docker compose exec garage /garage node id -q
+Subsequent restarts skip bootstrap entirely (idempotent marker file).
 
-# Assign storage capacity
-docker compose exec garage /garage layout assign -z dc1 -c 50GB <NODE_ID>
-docker compose exec garage /garage layout apply --version 1
-
-# Create a bucket
-docker compose exec garage /garage bucket create my-media
-
-# Create an API key
-docker compose exec garage /garage key create my-app-key
-
-# Grant access
-docker compose exec garage /garage bucket allow --read --write my-media --key my-app-key
-```
-
-Update `S3_BUCKET` in `.env` to match your bucket name. Restart:
-
-```bash
-docker compose up -d
-```
+> **No manual `garage` CLI commands required.** Just set your `.env` and `docker compose up`.
 
 ## Usage
 
@@ -148,24 +130,20 @@ curl http://cdn/purge/raw/promo.mp4*
 
 | Variable | Default | Description |
 |---|---|---|
-| `GARAGE_VERSION` | `v2.1.0` | Garage Docker image tag |
-| `IMAGOR_VERSION` | `latest` | Imagor Docker image tag |
-| `WEBUI_VERSION` | `1.1.0` | Garage WebUI image tag |
-| `AWS_REGION` | `garage` | S3 region |
-| `CDN_PORT` | `8080` | CDN exposed port |
-| `WEBUI_PORT` | `3909` | WebUI exposed port |
+| `GARAGE_CAPACITY` | `50GB` | Storage capacity assigned during bootstrap |
 | `CDN_DOMAIN` | `localhost` | CDN server name |
 | `ALLOWED_ORIGINS_REGEX` | `localhost` | CORS allowed origins (regex, `\|` separated) |
 | `CACHE_MAX_SIZE` | `10g` | Max disk cache size |
 | `MAX_VIDEO_SIZE` | `50m` | Max video body size |
 | `MAX_IMG_SIZE` | `5m` | Max image body size |
+| `IMAGOR_VERSION` | `latest` | Imagor Docker image tag |
 | `IMAGOR_AUTO_WEBP` | `1` | Auto-convert to WebP |
 | `IMAGOR_AUTO_AVIF` | `0` | Auto-convert to AVIF |
 | `IMAGOR_PROCESS_CONCURRENCY` | `10` | Max concurrent image processes |
 | `IMAGOR_REQUEST_TIMEOUT` | `30s` | Overall request timeout |
 | `IMAGOR_RESULT_STORAGE_EXPIRATION` | `720h` | Processed image cache TTL |
 | `AUTH_USER_PASS` | *(empty)* | WebUI auth (`user:bcrypt_hash`) |
-| `RUST_LOG` | `garage=info` | Garage log level |
+| `S3_KEY_NAME` | `default` | Name of the API key created in Garage |
 
 ### Allowed File Extensions
 
@@ -216,7 +194,7 @@ Client → CDN (Nginx) → Cache Hit?
 2. Set required env vars in the Coolify UI
 3. Assign domains to `cdn` and `webui` services only
 4. Garage and Imagor stay internal (no domain needed)
-5. Mount `garage.toml` as a file volume
+5. Do **not** define explicit `networks:` — Coolify injects its own for Traefik
 
 ### With Traefik
 

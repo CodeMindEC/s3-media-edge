@@ -2,9 +2,10 @@ ARG GARAGE_VERSION=v2.1.0
 
 FROM dxflrs/garage:${GARAGE_VERSION} AS garage-bin
 
-FROM alpine:3.20
+FROM alpine:3.21
 
 LABEL org.opencontainers.image.source="https://github.com/CodeMindEC/s3-media-edge" \
+      org.opencontainers.image.title="s3-media-edge-garage" \
       org.opencontainers.image.description="Garage S3 with auto-bootstrap"
 
 RUN apk add --no-cache curl tini \
@@ -17,6 +18,6 @@ COPY garage.toml /etc/garage.toml
 COPY entrypoint-garage.sh /usr/local/bin/entrypoint-garage.sh
 RUN chmod +x /usr/local/bin/entrypoint-garage.sh
 
+VOLUME ["/var/lib/garage/data", "/var/lib/garage/meta"]
 EXPOSE 3900 3901 3902 3903
-
 ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint-garage.sh"]

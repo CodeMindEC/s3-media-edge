@@ -1,3 +1,9 @@
 ARG WEBUI_VERSION=1.1.0
+
 FROM khairul169/garage-webui:${WEBUI_VERSION}
+
+LABEL org.opencontainers.image.source="https://github.com/CodeMindEC/s3-media-edge" \
+      org.opencontainers.image.title="s3-media-edge-webui" \
+      org.opencontainers.image.description="Garage WebUI with baked-in config"
+
 COPY garage.toml /etc/garage.toml
