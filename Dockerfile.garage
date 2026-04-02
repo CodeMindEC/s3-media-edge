@@ -1,3 +1,7 @@
 ARG GARAGE_VERSION=v2.1.0
 FROM dxflrs/garage:${GARAGE_VERSION}
+RUN apk add --no-cache curl
 COPY garage.toml /etc/garage.toml
+COPY entrypoint-garage.sh /entrypoint-garage.sh
+RUN chmod +x /entrypoint-garage.sh
+ENTRYPOINT ["/entrypoint-garage.sh"]

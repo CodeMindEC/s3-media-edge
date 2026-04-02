@@ -27,6 +27,9 @@ services:
             GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN}
             GARAGE_ALLOW_WORLD_READABLE_SECRETS: "true"
             RUST_LOG: "garage=info"
+            AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+            AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+            S3_BUCKET: ${S3_BUCKET}
         networks:
             - internal
         healthcheck:
