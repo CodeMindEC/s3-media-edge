@@ -103,7 +103,9 @@ services:
 
     # ── Garage WebUI — Admin panel (PUBLIC) ─────────────────────
     webui:
-        image: khairul169/garage-webui:${WEBUI_VERSION:-1.1.0}
+        build:
+            context: .
+            dockerfile: Dockerfile.webui
         restart: unless-stopped
         environment:
             API_BASE_URL: http://garage:3903

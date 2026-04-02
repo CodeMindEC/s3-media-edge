@@ -1,0 +1,3 @@
+ARG WEBUI_VERSION=1.1.0
+FROM khairul169/garage-webui:${WEBUI_VERSION}
+COPY garage.toml /etc/garage.toml
