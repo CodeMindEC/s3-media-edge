@@ -56,6 +56,12 @@ Subsequent restarts skip bootstrap entirely (idempotent marker file).
 
 > **No manual `garage` CLI commands required.** Just set your `.env` and `docker compose up`.
 
+**Standalone access** (default ports):
+- CDN: `http://localhost:8080`
+- WebUI: `http://localhost:3909`
+
+Customize ports via `CDN_PORT` and `WEBUI_PORT` in `.env`.
+
 ## Usage
 
 ### Images (resized)
