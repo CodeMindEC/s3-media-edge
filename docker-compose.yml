@@ -33,7 +33,7 @@ services:
             GARAGE_CAPACITY: ${GARAGE_CAPACITY:-50GB}
             S3_KEY_NAME: ${S3_KEY_NAME:-default}
         ports:
-            - "127.0.0.1:3900:3900" # S3 API — loopback only (SSH tunnel)
+            - "127.0.0.1:3900"
         security_opt:
             - no-new-privileges:true
         deploy:
