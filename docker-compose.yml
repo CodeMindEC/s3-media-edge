@@ -52,6 +52,9 @@ services:
     imagor:
         image: shumc/imagor:${IMAGOR_VERSION:-latest}
         restart: unless-stopped
+        depends_on:
+            garage:
+                condition: service_healthy
         environment:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
@@ -97,6 +100,11 @@ services:
             context: .
             dockerfile: Dockerfile
         restart: unless-stopped
+        depends_on:
+            garage:
+                condition: service_healthy
+            imagor:
+                condition: service_healthy
         volumes:
             - cdn_cache:/var/cache/nginx/cdn
         tmpfs:

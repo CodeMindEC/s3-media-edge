@@ -24,6 +24,11 @@ http {
     # ── Security ─────────────────────────────────────────────
     server_tokens off;
 
+    # ── DNS resolver (Docker internal) ───────────────────────
+    # Allows variable-based proxy_pass to resolve at request time
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    resolver_timeout 5s;
+
     # ── Logging with cache status ────────────────────────────
     log_format cdn '$remote_addr - [$time_local] "$request" '
                    '$status $body_bytes_sent '

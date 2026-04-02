@@ -3,19 +3,13 @@
 # Routes: /img/, /raw/, /doc/, /purge/, /health
 # ─────────────────────────────────────────────────────────────
 
-upstream imagor_backend {
-    server ${IMAGOR_UPSTREAM};
-    keepalive 16;
-}
-
-upstream s3_backend {
-    server ${S3_UPSTREAM};
-    keepalive 16;
-}
-
 server {
     listen 80;
     server_name ${CDN_DOMAIN} localhost;
+
+    # ── Upstream variables (resolved at request time via resolver) ─
+    set $imagor_upstream "http://${IMAGOR_UPSTREAM}";
+    set $s3_upstream     "http://${S3_UPSTREAM}";
 
     # ── Hide upstream headers ────────────────────────────────
     proxy_hide_header X-Amz-Request-Id;
@@ -72,7 +66,7 @@ server {
         limit_req zone=images burst=60 nodelay;
         client_max_body_size ${MAX_IMG_SIZE};
 
-        proxy_pass http://imagor_backend/unsafe/fit-in/${width}x${width}/$file;
+        proxy_pass $imagor_upstream/unsafe/fit-in/${width}x${width}/$file;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
 
@@ -115,7 +109,7 @@ server {
         limit_req zone=images burst=60 nodelay;
         client_max_body_size ${MAX_IMG_SIZE};
 
-        proxy_pass http://imagor_backend/unsafe/$file;
+        proxy_pass $imagor_upstream/unsafe/$file;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
 
@@ -162,7 +156,7 @@ server {
 
         slice 1m;
 
-        proxy_pass http://s3_backend/${S3_BUCKET}/$file;
+        proxy_pass $s3_upstream/${S3_BUCKET}/$file;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Range $slice_range;
@@ -205,7 +199,7 @@ server {
 
         limit_req zone=docs burst=20 nodelay;
 
-        proxy_pass http://s3_backend/${S3_BUCKET}/$file;
+        proxy_pass $s3_upstream/${S3_BUCKET}/$file;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
 
