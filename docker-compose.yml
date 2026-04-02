@@ -30,6 +30,8 @@ services:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
             S3_BUCKET: ${S3_BUCKET}
+            GARAGE_CAPACITY: ${GARAGE_CAPACITY:-50GB}
+            S3_KEY_NAME: ${S3_KEY_NAME:-default}
         security_opt:
             - no-new-privileges:true
         deploy:
