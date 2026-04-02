@@ -88,6 +88,8 @@ services:
             CDN_DOMAIN: ${CDN_DOMAIN:-localhost}
             MAX_VIDEO_SIZE: ${MAX_VIDEO_SIZE:-50m}
             MAX_IMG_SIZE: ${MAX_IMG_SIZE:-5m}
+        expose:
+            - "80"
         networks:
             - internal
         healthcheck:
@@ -108,6 +110,8 @@ services:
             S3_ENDPOINT_URL: http://garage:3900
             S3_REGION: garage
             AUTH_USER_PASS: ${AUTH_USER_PASS:-}
+        expose:
+            - "3909"
         networks:
             - internal
 
