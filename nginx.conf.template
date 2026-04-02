@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────
+# Nginx CDN — Main configuration
+# ${...} variables are substituted by envsubst in entrypoint.sh
+# $nginx_var variables are left intact for Nginx runtime
+# ─────────────────────────────────────────────────────────────
+
+load_module modules/ngx_http_cache_purge_module.so;
+
+worker_processes auto;
+worker_rlimit_nofile 8192;
+
+error_log /var/log/nginx/error.log warn;
+pid       /var/run/nginx.pid;
+
+events {
+    worker_connections 4096;
+    multi_accept on;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # ── Logging with cache status ────────────────────────────
+    log_format cdn '$remote_addr - [$time_local] "$request" '
+                   '$status $body_bytes_sent '
+                   '"$http_referer" "$http_user_agent" '
+                   'cache=$upstream_cache_status rt=$request_time';
+
+    access_log /var/log/nginx/access.log cdn;
+
+    # ── Performance ──────────────────────────────────────────
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+
+    # ── Gzip ─────────────────────────────────────────────────
+    gzip            on;
+    gzip_vary       off;
+    gzip_proxied    any;
+    gzip_comp_level 4;
+    gzip_min_length 256;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        application/json
+        application/javascript
+        application/xml
+        application/rss+xml
+        image/svg+xml;
+
+    # ── Disk cache ───────────────────────────────────────────
+    proxy_cache_path /var/cache/nginx/cdn
+        levels=1:2
+        keys_zone=cdn_cache:50m
+        max_size=${CACHE_MAX_SIZE}
+        inactive=30d
+        use_temp_path=off;
+
+    # ── Rate limiting ────────────────────────────────────────
+    limit_req_zone $binary_remote_addr zone=images:10m rate=30r/s;
+    limit_req_zone $binary_remote_addr zone=raw:10m    rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=docs:10m   rate=10r/s;
+
+    # ── CORS origin validation ───────────────────────────────
+    map $http_origin $cors_origin {
+        default "";
+        "~*^https?://(.*\.)?(${ALLOWED_ORIGINS_REGEX})(:[0-9]+)?$" "$http_origin";
+    }
+
+    include /etc/nginx/conf.d/*.conf;
+}

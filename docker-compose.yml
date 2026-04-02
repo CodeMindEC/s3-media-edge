@@ -1,0 +1,114 @@
+# ─────────────────────────────────────────────────────────────
+# s3-media-edge — Self-hosted CDN + S3 + Image Processing
+#
+# PUBLIC services  (assign domains in your reverse proxy):
+#   - cdn           → Nginx CDN with disk cache  (port 80)
+#   - webui         → Garage admin panel          (port 3909)
+#
+# PRIVATE services (internal Docker network only):
+#   - garage        → S3-compatible object storage
+#   - imagor        → On-the-fly image processing
+# ─────────────────────────────────────────────────────────────
+
+services:
+    # ── Garage S3 ───────────────────────────────────────────────
+    garage:
+        image: dxflrs/garage:${GARAGE_VERSION:-v2.1.0}
+        restart: unless-stopped
+        volumes:
+            - garage_data:/var/lib/garage/data
+            - garage_meta:/var/lib/garage/meta
+            - ./garage.toml:/etc/garage.toml:ro
+        environment:
+            GARAGE_CONFIG_FILE: /etc/garage.toml
+            GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+            GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+            GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN}
+            GARAGE_ALLOW_WORLD_READABLE_SECRETS: "true"
+            RUST_LOG: ${RUST_LOG:-garage=info}
+        networks:
+            - internal
+        healthcheck:
+            test: ["CMD", "curl", "-sf", "http://localhost:3900/health"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+
+    # ── Imagor — Image processing (PRIVATE) ─────────────────────
+    imagor:
+        image: shumc/imagor:${IMAGOR_VERSION:-latest}
+        restart: unless-stopped
+        environment:
+            AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+            AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+            AWS_REGION: ${AWS_REGION:-garage}
+            AWS_EC2_METADATA_DISABLED: "true"
+            S3_ENDPOINT: http://garage:3900
+            S3_FORCE_PATH_STYLE: "1"
+            S3_LOADER_BUCKET: ${S3_BUCKET}
+            S3_STORAGE_BUCKET: ${S3_BUCKET}
+            S3_RESULT_STORAGE_BUCKET: ${S3_BUCKET}
+            IMAGOR_UNSAFE: "1"
+            IMAGOR_AUTO_WEBP: ${IMAGOR_AUTO_WEBP:-1}
+            IMAGOR_AUTO_AVIF: ${IMAGOR_AUTO_AVIF:-0}
+            IMAGOR_STRIP_METADATA: "1"
+            IMAGOR_REQUEST_TIMEOUT: ${IMAGOR_REQUEST_TIMEOUT:-30s}
+            IMAGOR_LOAD_TIMEOUT: ${IMAGOR_LOAD_TIMEOUT:-10s}
+            IMAGOR_PROCESS_TIMEOUT: ${IMAGOR_PROCESS_TIMEOUT:-15s}
+            IMAGOR_SAVE_TIMEOUT: ${IMAGOR_SAVE_TIMEOUT:-5s}
+            IMAGOR_PROCESS_CONCURRENCY: ${IMAGOR_PROCESS_CONCURRENCY:-10}
+            IMAGOR_PROCESS_QUEUE_SIZE: ${IMAGOR_PROCESS_QUEUE_SIZE:-100}
+            IMAGOR_RESULT_STORAGE_EXPIRATION: ${IMAGOR_RESULT_STORAGE_EXPIRATION:-720h}
+        networks:
+            - internal
+
+    # ── CDN Nginx — Caching reverse proxy (PUBLIC) ──────────────
+    cdn:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        volumes:
+            - cdn_cache:/var/cache/nginx/cdn
+        environment:
+            IMAGOR_UPSTREAM: imagor:8000
+            S3_UPSTREAM: garage:3900
+            S3_BUCKET: ${S3_BUCKET}
+            ALLOWED_ORIGINS_REGEX: ${ALLOWED_ORIGINS_REGEX:-localhost}
+            CACHE_MAX_SIZE: ${CACHE_MAX_SIZE:-10g}
+            CDN_DOMAIN: ${CDN_DOMAIN:-localhost}
+            MAX_VIDEO_SIZE: ${MAX_VIDEO_SIZE:-50m}
+            MAX_IMG_SIZE: ${MAX_IMG_SIZE:-5m}
+        ports:
+            - "${CDN_PORT:-8080}:80"
+        networks:
+            - internal
+        healthcheck:
+            test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+
+    # ── Garage WebUI — Admin panel (PUBLIC) ─────────────────────
+    webui:
+        image: khairul169/garage-webui:${WEBUI_VERSION:-1.1.0}
+        restart: unless-stopped
+        environment:
+            API_BASE_URL: http://garage:3903
+            API_ADMIN_KEY: ${GARAGE_ADMIN_TOKEN}
+            S3_ENDPOINT_URL: http://garage:3900
+            S3_REGION: ${AWS_REGION:-garage}
+            AUTH_USER_PASS: ${AUTH_USER_PASS:-}
+        ports:
+            - "${WEBUI_PORT:-3909}:3909"
+        networks:
+            - internal
+
+networks:
+    internal:
+        driver: bridge
+
+volumes:
+    garage_meta:
+    garage_data:
+    cdn_cache:
