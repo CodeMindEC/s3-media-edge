@@ -56,11 +56,13 @@ Subsequent restarts skip bootstrap entirely (idempotent marker file).
 
 > **No manual `garage` CLI commands required.** Just set your `.env` and `docker compose up`.
 
-**Standalone access** (default ports):
+**Standalone access** (default ports via `docker-compose.override.yml`, auto-loaded):
 - CDN: `http://localhost:8080`
 - WebUI: `http://localhost:3909`
 
 Customize ports via `CDN_PORT` and `WEBUI_PORT` in `.env`.
+
+> Coolify/Traefik users: the override file is **not loaded** because Coolify passes `-f docker-compose.yml` explicitly. Traefik routes traffic by domain instead.
 
 ## Usage
 

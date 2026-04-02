@@ -1,0 +1,12 @@
+# ─────────────────────────────────────────────────────────────
+# Standalone overrides — auto-loaded by `docker compose up`
+# Coolify uses -f docker-compose.yml explicitly, so this is ignored.
+# ─────────────────────────────────────────────────────────────
+
+services:
+    cdn:
+        ports:
+            - "${CDN_PORT:-8080}:80"
+    webui:
+        ports:
+            - "${WEBUI_PORT:-3909}:3909"
