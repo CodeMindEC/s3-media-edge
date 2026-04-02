@@ -34,11 +34,8 @@ echo "[bootstrap] Garage admin API is responding (${elapsed}s)."
 if [ ! -f "$MARKER" ]; then
     echo "[bootstrap] First boot — configuring cluster..."
 
-    # Get own node ID (look for nodes with no assigned role)
-    NODE_ID=$(garage status 2>/dev/null | grep "NO ROLE" | awk '{print $1}' | head -1)
-    if [ -z "$NODE_ID" ]; then
-        NODE_ID=$(garage status 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
-    fi
+    # Get own node ID via 'garage node id' (returns <id>@<ip>:<port>)
+    NODE_ID=$(garage node id 2>/dev/null | cut -d'@' -f1 | head -1)
 
     if [ -z "$NODE_ID" ]; then
         echo "[bootstrap] WARNING: Could not determine node ID. Manual setup required."
