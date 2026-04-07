@@ -138,6 +138,9 @@ services:
             context: .
             dockerfile: Dockerfile.webui
         restart: unless-stopped
+        depends_on:
+            garage:
+                condition: service_healthy
         environment:
             API_BASE_URL: http://garage:3903
             API_ADMIN_KEY: ${GARAGE_ADMIN_TOKEN}
@@ -151,9 +154,9 @@ services:
         deploy:
             resources:
                 limits:
-                    memory: 128m
+                    memory: 256m
                 reservations:
-                    memory: 32m
+                    memory: 64m
 
 volumes:
     garage_meta:
