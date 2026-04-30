@@ -22,14 +22,14 @@ services:
             - garage_meta:/var/lib/garage/meta
         environment:
             GARAGE_CONFIG_FILE: /etc/garage.toml
-            GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
-            GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
-            GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN}
+            GARAGE_RPC_SECRET: "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET must be a 64-character hex string. Generate with: openssl rand -hex 32}"
+            GARAGE_ADMIN_TOKEN: "${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required. Generate with: openssl rand -base64 24}"
+            GARAGE_METRICS_TOKEN: "${GARAGE_METRICS_TOKEN:?GARAGE_METRICS_TOKEN is required. Generate with: openssl rand -base64 24}"
             GARAGE_ALLOW_WORLD_READABLE_SECRETS: "true"
             RUST_LOG: "garage=info"
-            AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-            AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-            S3_BUCKET: ${S3_BUCKET}
+            AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}"
+            AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}"
+            S3_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
             GARAGE_CAPACITY: ${GARAGE_CAPACITY:-50GB}
             S3_KEY_NAME: ${S3_KEY_NAME:-default}
             S3_PUBLIC_READ: ${S3_PUBLIC_READ:-false}
@@ -60,15 +60,15 @@ services:
             garage:
                 condition: service_healthy
         environment:
-            AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-            AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+            AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}"
+            AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}"
             AWS_REGION: garage
             AWS_EC2_METADATA_DISABLED: "true"
             S3_ENDPOINT: http://garage:3900
             S3_FORCE_PATH_STYLE: "1"
-            S3_LOADER_BUCKET: ${S3_BUCKET}
-            S3_STORAGE_BUCKET: ${S3_BUCKET}
-            S3_RESULT_STORAGE_BUCKET: ${S3_BUCKET}
+            S3_LOADER_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
+            S3_STORAGE_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
+            S3_RESULT_STORAGE_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
             IMAGOR_UNSAFE: "1"
             IMAGOR_AUTO_WEBP: ${IMAGOR_AUTO_WEBP:-1}
             IMAGOR_AUTO_AVIF: ${IMAGOR_AUTO_AVIF:-0}
@@ -108,7 +108,7 @@ services:
             IMAGOR_UPSTREAM: imagor:8000
             S3_UPSTREAM: garage:3900
             S3_WEB_UPSTREAM: garage:3902
-            S3_BUCKET: ${S3_BUCKET}
+            S3_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
             ALLOWED_ORIGINS_REGEX: ${ALLOWED_ORIGINS_REGEX:-localhost}
             CACHE_MAX_SIZE: ${CACHE_MAX_SIZE:-10g}
             CDN_DOMAIN: ${CDN_DOMAIN:-localhost}
@@ -143,7 +143,7 @@ services:
                 condition: service_healthy
         environment:
             API_BASE_URL: http://garage:3903
-            API_ADMIN_KEY: ${GARAGE_ADMIN_TOKEN}
+            API_ADMIN_KEY: "${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required. Generate with: openssl rand -base64 24}"
             S3_ENDPOINT_URL: http://garage:3900
             S3_REGION: garage
             AUTH_USER_PASS: ${AUTH_USER_PASS:-}

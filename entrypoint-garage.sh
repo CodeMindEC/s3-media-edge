@@ -7,6 +7,36 @@ set -eu
 MARKER="/var/lib/garage/meta/.bootstrapped"
 MAX_WAIT=60
 
+require_env() {
+    name="$1"
+    eval "value=\${$name:-}"
+    if [ -z "$value" ]; then
+        echo "[bootstrap] ERROR: $name is required"
+        exit 1
+    fi
+}
+
+require_env GARAGE_RPC_SECRET
+require_env GARAGE_ADMIN_TOKEN
+require_env GARAGE_METRICS_TOKEN
+require_env AWS_ACCESS_KEY_ID
+require_env AWS_SECRET_ACCESS_KEY
+require_env S3_BUCKET
+
+if [ "${#GARAGE_RPC_SECRET}" -ne 64 ]; then
+    echo "[bootstrap] ERROR: GARAGE_RPC_SECRET must be exactly 64 hex characters"
+    echo "[bootstrap] Generate one with: openssl rand -hex 32"
+    exit 1
+fi
+
+case "$GARAGE_RPC_SECRET" in
+    *[!0123456789abcdefABCDEF]*)
+        echo "[bootstrap] ERROR: GARAGE_RPC_SECRET must contain only hex characters"
+        echo "[bootstrap] Generate one with: openssl rand -hex 32"
+        exit 1
+        ;;
+esac
+
 # Start Garage in background
 garage server &
 GARAGE_PID=$!

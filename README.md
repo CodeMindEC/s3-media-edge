@@ -127,7 +127,7 @@ curl http://cdn/purge/raw/promo.mp4*
 
 | Variable | Description |
 |---|---|
-| `GARAGE_RPC_SECRET` | Garage RPC secret (64-char hex) |
+| `GARAGE_RPC_SECRET` | Garage RPC secret. Must be exactly 64 hex characters. Generate with `openssl rand -hex 32`. |
 | `GARAGE_ADMIN_TOKEN` | Garage admin API token |
 | `GARAGE_METRICS_TOKEN` | Garage metrics endpoint token |
 | `AWS_ACCESS_KEY_ID` | S3 access key for Imagor |
