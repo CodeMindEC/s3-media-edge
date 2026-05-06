@@ -8,7 +8,11 @@ LABEL org.opencontainers.image.source="https://github.com/CodeMindEC/s3-media-ed
       org.opencontainers.image.title="s3-media-edge-garage" \
       org.opencontainers.image.description="Garage S3 with auto-bootstrap"
 
-RUN apk add --no-cache curl tini \
+RUN for attempt in 1 2 3 4 5; do \
+        apk add --no-cache curl tini && break; \
+        if [ "$attempt" = 5 ]; then exit 1; fi; \
+        sleep $((attempt * 5)); \
+    done \
     && addgroup -S garage && adduser -S garage -G garage \
     && mkdir -p /var/lib/garage/data /var/lib/garage/meta \
     && chown -R garage:garage /var/lib/garage

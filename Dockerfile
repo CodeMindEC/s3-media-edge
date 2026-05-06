@@ -5,7 +5,11 @@
 ARG NGINX_TAG=stable-alpine
 
 FROM nginx:${NGINX_TAG} AS builder
-RUN apk add --no-cache gcc make libc-dev pcre2-dev zlib-dev openssl-dev linux-headers git \
+RUN for attempt in 1 2 3 4 5; do \
+        apk add --no-cache gcc make libc-dev pcre2-dev zlib-dev openssl-dev linux-headers git && break; \
+        if [ "$attempt" = 5 ]; then exit 1; fi; \
+        sleep $((attempt * 5)); \
+    done \
     && NGINX_VERSION=$(nginx -v 2>&1 | sed 's/nginx version: nginx\///') \
     && wget -q "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
     && tar -xzf "nginx-${NGINX_VERSION}.tar.gz" \
@@ -23,7 +27,11 @@ LABEL org.opencontainers.image.source="https://github.com/CodeMindEC/s3-media-ed
 
 COPY --from=builder /nginx-*/objs/ngx_http_cache_purge_module.so /etc/nginx/modules/
 
-RUN apk add --no-cache curl \
+RUN for attempt in 1 2 3 4 5; do \
+        apk add --no-cache curl && break; \
+        if [ "$attempt" = 5 ]; then exit 1; fi; \
+        sleep $((attempt * 5)); \
+    done \
     && rm -f /etc/nginx/conf.d/default.conf \
     && mkdir -p /var/cache/nginx/cdn \
     && chown -R nginx:nginx /var/cache/nginx/cdn /var/log/nginx \
