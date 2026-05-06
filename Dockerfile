@@ -1,39 +1,21 @@
 # ─────────────────────────────────────────────────────────────
-# CDN Nginx with ngx_cache_purge module
-# Multi-stage build: compiles dynamic module against exact nginx version
+# CDN Nginx with Alpine-packaged ngx_cache_purge module
 # ─────────────────────────────────────────────────────────────
-ARG NGINX_TAG=stable-alpine
+ARG ALPINE_VERSION=3.21
 
-FROM nginx:${NGINX_TAG} AS builder
-RUN for attempt in 1 2 3 4 5; do \
-        apk add --no-cache gcc make libc-dev pcre2-dev zlib-dev openssl-dev linux-headers git && break; \
-        if [ "$attempt" = 5 ]; then exit 1; fi; \
-        sleep $((attempt * 5)); \
-    done \
-    && NGINX_VERSION=$(nginx -v 2>&1 | sed 's/nginx version: nginx\///') \
-    && wget -q "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
-    && tar -xzf "nginx-${NGINX_VERSION}.tar.gz" \
-    && git clone --depth 1 https://github.com/nginx-modules/ngx_cache_purge.git /tmp/ngx_cache_purge \
-    && cd "nginx-${NGINX_VERSION}" \
-    && ./configure --with-compat --add-dynamic-module=/tmp/ngx_cache_purge \
-    && make modules
-
-# ── Final image ───────────────────────────────────────────────
-FROM nginx:${NGINX_TAG}
+FROM alpine:${ALPINE_VERSION}
 
 LABEL org.opencontainers.image.source="https://github.com/CodeMindEC/s3-media-edge" \
       org.opencontainers.image.title="s3-media-edge-cdn" \
       org.opencontainers.image.description="CDN Nginx with cache purge, image resize & video slice"
 
-COPY --from=builder /nginx-*/objs/ngx_http_cache_purge_module.so /etc/nginx/modules/
-
 RUN for attempt in 1 2 3 4 5; do \
-        apk add --no-cache curl && break; \
+        apk add --no-cache nginx nginx-mod-http-cache-purge curl gettext && break; \
         if [ "$attempt" = 5 ]; then exit 1; fi; \
         sleep $((attempt * 5)); \
     done \
-    && rm -f /etc/nginx/conf.d/default.conf \
-    && mkdir -p /var/cache/nginx/cdn \
+    && rm -f /etc/nginx/http.d/default.conf /etc/nginx/conf.d/default.conf \
+    && mkdir -p /etc/nginx/conf.d /etc/nginx/templates /var/cache/nginx/cdn /var/log/nginx \
     && chown -R nginx:nginx /var/cache/nginx/cdn /var/log/nginx \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
