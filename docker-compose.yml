@@ -69,6 +69,7 @@ services:
             S3_LOADER_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
             S3_STORAGE_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
             S3_RESULT_STORAGE_BUCKET: "${S3_BUCKET:?S3_BUCKET is required}"
+            HTTP_LOADER_DISABLE: "1"
             IMAGOR_UNSAFE: "1"
             IMAGOR_AUTO_WEBP: ${IMAGOR_AUTO_WEBP:-1}
             IMAGOR_AUTO_AVIF: ${IMAGOR_AUTO_AVIF:-0}

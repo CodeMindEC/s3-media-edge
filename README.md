@@ -147,6 +147,7 @@ curl http://cdn/purge/raw/promo.mp4*
 | `IMAGOR_VERSION` | `latest` | Imagor Docker image tag |
 | `IMAGOR_AUTO_WEBP` | `1` | Auto-convert to WebP |
 | `IMAGOR_AUTO_AVIF` | `0` | Auto-convert to AVIF |
+| `HTTP_LOADER_DISABLE` | `1` | Keep Imagor S3-only so object keys like `medusa/dora/file.webp` are not treated as remote hostnames |
 | `IMAGOR_PROCESS_CONCURRENCY` | `10` | Max concurrent image processes |
 | `IMAGOR_REQUEST_TIMEOUT` | `30s` | Overall request timeout |
 | `IMAGOR_RESULT_STORAGE_EXPIRATION` | `720h` | Processed image cache TTL |
