@@ -62,6 +62,17 @@ http {
     limit_req_zone $binary_remote_addr zone=raw:10m    rate=10r/s;
     limit_req_zone $binary_remote_addr zone=docs:10m   rate=10r/s;
 
+    # ── Image format variant ─────────────────────────────────
+    # Imagor picks WebP/AVIF from the Accept header (IMAGOR_AUTO_WEBP/AVIF).
+    # The cache has to key on that capability too, otherwise whichever client
+    # fills the cache first (a crawler, curl, an old browser) decides the
+    # format — and the size — every later visitor gets.
+    map $http_accept $img_accept_variant {
+        default          "orig";
+        "~*image/avif"   "avif";
+        "~*image/webp"   "webp";
+    }
+
     # ── CORS origin map ──────────────────────────────────────
     map $http_origin $cors_origin {
         default "";

@@ -61,7 +61,7 @@ server {
         proxy_set_header   Connection "";
 
         proxy_cache           cdn_cache;
-        proxy_cache_key       "$uri";
+        proxy_cache_key       "$uri|$img_accept_variant";
         proxy_cache_valid     200 30d;
         proxy_cache_valid     404 1m;
         proxy_cache_valid     500 502 503 504 10s;
@@ -80,7 +80,48 @@ server {
         add_header X-Cache-Status         $upstream_cache_status always;
         add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
-        add_header Vary "Origin" always;
+        add_header Vary "Origin, Accept" always;
+    }
+
+    # ── Images — resize + explicit quality (/img/{w}q{q}/{file}) ─
+    # For large views (lightboxes, zoom) that need less compression than the
+    # default. Quality is limited to a few steps so the cache stays small.
+    location ~ ^/img/(\d+)q(60|70|75|80|85|90|95)/(.+)$ {
+        set $width   $1;
+        set $quality $2;
+        set $file    $3;
+        if ($file !~* \.(jpe?g|png|webp|avif|svg|gif)$) {
+            return 404 '{"error":"extension not allowed"}';
+        }
+
+        limit_req zone=images burst=60 nodelay;
+        client_max_body_size ${MAX_IMG_SIZE};
+
+        proxy_pass         $imagor_upstream/unsafe/fit-in/${width}x${width}/filters:quality(${quality})/$file;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection "";
+
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri|$img_accept_variant";
+        proxy_cache_valid     200 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_valid     500 502 503 504 10s;
+        proxy_cache_lock      on;
+        proxy_cache_lock_timeout 10s;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+        proxy_send_timeout    30s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin  $cors_origin always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Vary "Origin, Accept" always;
     }
 
     # ── Images — original (/img/original/{file}) ─────────────
@@ -98,7 +139,7 @@ server {
         proxy_set_header   Connection "";
 
         proxy_cache           cdn_cache;
-        proxy_cache_key       "$uri";
+        proxy_cache_key       "$uri|$img_accept_variant";
         proxy_cache_valid     200 30d;
         proxy_cache_valid     404 1m;
         proxy_cache_valid     500 502 503 504 10s;
@@ -117,7 +158,7 @@ server {
         add_header X-Cache-Status         $upstream_cache_status always;
         add_header Access-Control-Allow-Origin  $cors_origin always;
         add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
-        add_header Vary "Origin" always;
+        add_header Vary "Origin, Accept" always;
     }
 
     # ── Raw files — any file direct from S3 (admin panel, etc.) ─
