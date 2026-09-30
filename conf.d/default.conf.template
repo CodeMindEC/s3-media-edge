@@ -52,6 +52,9 @@ server {
         if ($file !~* \.(jpe?g|png|webp|avif|svg|gif)$) {
             return 404 '{"error":"extension not allowed"}';
         }
+        if ($img_path_unsafe) {
+            return 400 '{"error":"invalid image path"}';
+        }
 
         limit_req zone=images burst=60 nodelay;
         client_max_body_size ${MAX_IMG_SIZE};
@@ -93,6 +96,9 @@ server {
         if ($file !~* \.(jpe?g|png|webp|avif|svg|gif)$) {
             return 404 '{"error":"extension not allowed"}';
         }
+        if ($img_path_unsafe) {
+            return 400 '{"error":"invalid image path"}';
+        }
 
         limit_req zone=images burst=60 nodelay;
         client_max_body_size ${MAX_IMG_SIZE};
@@ -129,6 +135,9 @@ server {
         set $file $1;
         if ($file !~* \.(jpe?g|png|webp|avif|svg|gif)$) {
             return 404 '{"error":"extension not allowed"}';
+        }
+        if ($img_path_unsafe) {
+            return 400 '{"error":"invalid image path"}';
         }
 
         limit_req zone=images burst=60 nodelay;

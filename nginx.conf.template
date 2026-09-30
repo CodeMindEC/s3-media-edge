@@ -73,6 +73,16 @@ http {
         "~*image/webp"   "webp";
     }
 
+    # ── Imagor control segments ──────────────────────────────
+    # Image routes pass the rest of the path to imagor, so a key could smuggle
+    # its operators (/img/original/fit-in/5000x5000/filters:…/a.jpg) and force
+    # arbitrary processing + cache entries. Flag any path segment that is an
+    # imagor option: resize/crop geometry, fit modes, alignment, filters.
+    map $uri $img_path_unsafe {
+        default 0;
+        "~*/(unsafe|fit-in|full-fit-in|adaptive-fit-in|adaptive-full-fit-in|stretch|trim|smart|meta|params|filters:[^/]*|-?\d*x-?\d*|\d+x\d+:\d+x\d+)(/|$)" 1;
+    }
+
     # ── CORS origin map ──────────────────────────────────────
     map $http_origin $cors_origin {
         default "";
