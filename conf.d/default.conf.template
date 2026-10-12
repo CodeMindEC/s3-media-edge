@@ -175,6 +175,95 @@ server {
         add_header Vary "Origin" always;
     }
 
+    # ── Images — width-only resize (/img/{w}w/{file}) ────────
+    # /img/{w}/ fits the image in a {w}x{w} box, so a portrait photo asked for
+    # at 640 came back 427 px wide while srcset told the browser 640w, and the
+    # browser upscaled it. Here only the width is bounded ({w}x0); fit-in still
+    # never upscales a smaller original.
+    location ~ ^/img/(\d+)w/(.+)$ {
+        set $width $1;
+        set $file  $2;
+        if ($file !~* \.(jpe?g|png|webp|avif|svg|gif)$) {
+            return 404 '{"error":"extension not allowed"}';
+        }
+        if ($img_path_unsafe) {
+            return 400 '{"error":"invalid image path"}';
+        }
+
+        limit_req zone=images burst=60 nodelay;
+        client_max_body_size ${MAX_IMG_SIZE};
+
+        proxy_pass         $imagor_upstream/unsafe/fit-in/${width}x0/$file;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection "";
+
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri|$img_accept_variant";
+        proxy_cache_valid     200 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_valid     500 502 503 504 10s;
+        proxy_cache_lock      on;
+        proxy_cache_lock_timeout 10s;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+        proxy_send_timeout    30s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin  $cors_origin always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Vary "Origin, Accept" always;
+    }
+
+    # ── Images — width-only resize + format (/img/{w}w-{fmt}/{file}) ─
+    # Quality 80 instead of Imagor's default 75 for photos: measured at
+    # 640 px it costs ~15-20 % more bytes.
+    location ~ ^/img/(\d+)w-(webp|avif)/(.+)$ {
+        set $width  $1;
+        set $format $2;
+        set $file   $3;
+        if ($file !~* \.(jpe?g|png)$) {
+            return 404 '{"error":"extension not allowed"}';
+        }
+        if ($img_path_unsafe) {
+            return 400 '{"error":"invalid image path"}';
+        }
+
+        limit_req zone=images burst=60 nodelay;
+        client_max_body_size ${MAX_IMG_SIZE};
+
+        proxy_pass         $imagor_upstream/unsafe/fit-in/${width}x0/filters:format(${format}):quality(80)/$file;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection "";
+
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri";
+        proxy_cache_valid     200 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_valid     500 502 503 504 10s;
+        proxy_cache_lock      on;
+        proxy_cache_lock_timeout 10s;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+        proxy_send_timeout    30s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin  $cors_origin always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Vary "Origin" always;
+    }
+
     # ── Images — original (/img/original/{file}) ─────────────
     location ~ ^/img/original/(.+)$ {
         set $file $1;
