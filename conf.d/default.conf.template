@@ -130,6 +130,51 @@ server {
         add_header Vary "Origin, Accept" always;
     }
 
+    # ── Images — resize + output format (/img/{w}-{fmt}/{file}) ─
+    # Format conversion is requested by URL, not by Accept: the CMS media proxy
+    # fetches with a generic Accept and every layer caches by URL. The filter is
+    # built here because $img_path_unsafe rejects filters: segments in $file.
+    location ~ ^/img/(\d+)-(webp|avif)/(.+)$ {
+        set $width  $1;
+        set $format $2;
+        set $file   $3;
+        if ($file !~* \.(jpe?g|png)$) {
+            return 404 '{"error":"extension not allowed"}';
+        }
+        if ($img_path_unsafe) {
+            return 400 '{"error":"invalid image path"}';
+        }
+
+        limit_req zone=images burst=60 nodelay;
+        client_max_body_size ${MAX_IMG_SIZE};
+
+        proxy_pass         $imagor_upstream/unsafe/fit-in/${width}x${width}/filters:format(${format})/$file;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection "";
+
+        proxy_cache           cdn_cache;
+        proxy_cache_key       "$uri";
+        proxy_cache_valid     200 30d;
+        proxy_cache_valid     404 1m;
+        proxy_cache_valid     500 502 503 504 10s;
+        proxy_cache_lock      on;
+        proxy_cache_lock_timeout 10s;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+        proxy_send_timeout    30s;
+
+        add_header Cache-Control          "public, max-age=2592000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options        "DENY" always;
+        add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
+        add_header X-Cache-Status         $upstream_cache_status always;
+        add_header Access-Control-Allow-Origin  $cors_origin always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Vary "Origin" always;
+    }
+
     # ── Images — original (/img/original/{file}) ─────────────
     location ~ ^/img/original/(.+)$ {
         set $file $1;
